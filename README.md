@@ -18,3 +18,7 @@ How to Install and Use bam2maya2020.bat:
   5. Wait for the script to finish executing, and you're done!
   
 There are plenty of resources online that show you how to run MEL scripts, Google them!
+Using the MEL script is a different story. To use it:
+  1. Select the models to which you would like to apply textures
+  2. Run the script
+  3. Enjoy!
