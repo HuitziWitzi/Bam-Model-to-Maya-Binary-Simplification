@@ -1,0 +1,79 @@
+hyperShade -smn;
+string $materialName[] = sort(`ls -sl`);
+string $fileList[] = sort(`ls -sl`);
+string $fileListOld[] = sort(`ls -type "file"`);
+int $loopFileList = 0;
+
+//fileList[] is originally the same as materialName[], but in this loop, the word Shader is replaced with File, as per TTR naming conventions
+for($itemName in $materialName)
+{
+    $fileList[$loopFileList] = substituteAllString($materialName[$loopFileList], "Shader", "File");
+    print $fileList[$loopFileList];
+    $loopFileList++;
+}
+
+int $loop = 0;
+for($itemName in $materialName)
+{
+    
+    //Iterate to the next step in the loop if the file name contains the word "lambert" + some number
+    if(`substring $fileList[$loop] 1 7` == "lambert") {
+        continue;
+    }
+    
+    hyperShade -o $materialName[$loop];
+    
+    print($materialName[$loop] + ", " + $fileList[$loop] + "\n");
+    //Create nodes and do default connections
+    string $fileNode = `shadingNode -asTexture file -name $fileList[$loop]`;
+    string $place2d = ( "place_" + $fileNode);
+    $place2d = `shadingNode -asUtility place2dTexture -name $place2d`;
+    
+    //Make this file look nice :)
+    proc connectAttribute(string $attr, string $place, string $file)
+    {
+        connectAttr -f ($place + "." + $attr) ($file + "." + $attr);
+    }
+    
+    connectAttribute "coverage"       $place2d $fileNode;
+    connectAttribute "translateFrame" $place2d $fileNode;
+    connectAttribute "rotateFrame"    $place2d $fileNode;
+    connectAttribute "stagger"        $place2d $fileNode;
+    connectAttribute "wrapU"          $place2d $fileNode;
+    connectAttribute "wrapV"          $place2d $fileNode;
+    connectAttribute "repeatUV"       $place2d $fileNode;
+    connectAttribute "offset"         $place2d $fileNode;
+    connectAttribute "rotateUV"       $place2d $fileNode;
+    connectAttr -f ( $place2d + ".outUV" ) ( $fileNode + ".uv" );
+    connectAttr -f ( $place2d + ".outUvFilterSize" ) ( $fileNode + ".uvFilterSize" );
+    
+    //Disconnect any pre-existing attributes connected to shader input color to avoid errors
+    string $fileOutColor = substituteAllString($materialName[$loop], "Shader", "File");
+    if(catch(`disconnectAttr ($fileOutColor + ".outColor") ($materialName[$loop] + ".color")`))
+    {
+        print("No disconnect necessary!\n");
+    } else
+    {
+        //Keep going!
+    }
+    
+    //Set the texture attribute to its corresponding file and connect tht output of the texture to the color input of the material
+    string $texturePath = getAttr( $fileList[$loop] + ".fileTextureName" );
+    setAttr -type "string" ( $fileNode + ".fileTextureName" ) $texturePath;
+    if(catch(`connectAttr ( $fileNode + ".outColor" ) ( $materialName[$loop] + ".color" )`))
+    {
+        print("Connection between outColor and color already exists!\n");
+    } else
+    {
+        //Keep going!
+    }
+    if(catch(`connectAttr ( $fileNode + ".outColor" ) ( $materialName[$loop] + ".ambientColor" )`))
+    {
+        print("Connection between outColor and ambientColor already exists!\n");
+    } else {
+        //Keep going!
+    }
+
+    $loop++;
+    
+}
